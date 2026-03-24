@@ -1,21 +1,6 @@
-from aiogram.types import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    ReplyKeyboardMarkup,
-    KeyboardButton,
-)
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 TASKS_PER_PAGE = 5
-
-
-def main_menu_kb() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📋 Мои задачи"), KeyboardButton(text="➕ Новая задача")],
-            [KeyboardButton(text="🌤 Погода")],
-        ],
-        resize_keyboard=True,
-    )
 
 
 def tasks_inline_kb(tasks: list[tuple[int, str]], page: int = 0) -> InlineKeyboardMarkup:

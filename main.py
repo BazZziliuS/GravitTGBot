@@ -5,12 +5,13 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from bot.config import BOT_TOKEN
-from bot.db.models import init_db
-from bot.handlers import common, start, tasks, weather
+from tgbot.data.config import BOT_TOKEN
+from tgbot.database.db_helper import database_init, database_close
+from tgbot.middlewares import register_all_middlewares
+from tgbot.routers import register_all_routers
 
 
-async def main() -> None:
+async def main():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -19,16 +20,24 @@ async def main() -> None:
     if not BOT_TOKEN:
         raise SystemExit("BOT_TOKEN не задан. Создайте файл .env с переменной BOT_TOKEN.")
 
-    await init_db()
+    await database_init()
 
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
 
-    dp.include_routers(start.router, tasks.router, weather.router, common.router)
+    register_all_middlewares(dp)
+    register_all_routers(dp)
 
     logging.info("Бот запущен")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await database_close()
+        await bot.session.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logging.warning("Бот остановлен")

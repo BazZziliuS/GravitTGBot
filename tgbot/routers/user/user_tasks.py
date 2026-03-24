@@ -4,10 +4,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
-from bot.db.models import add_task, complete_task, get_active_tasks
-from bot.keyboards.main_menu import main_menu_kb, tasks_inline_kb
+from tgbot.database.repository.tasks import Tasksx
+from tgbot.utils.const_functions import is_number
+from tgbot.keyboards.inline_tasks import tasks_inline_kb
+from tgbot.keyboards.reply_main import main_menu_kb
 
-router = Router()
+router = Router(name=__name__)
 
 
 class AddTaskStates(StatesGroup):
@@ -15,34 +17,34 @@ class AddTaskStates(StatesGroup):
 
 
 @router.message(Command("done"))
-async def cmd_done(message: Message, command: CommandObject) -> None:
+async def cmd_done(message: Message, command: CommandObject):
     if not command.args:
         await message.answer("Укажи номер задачи: /done 1")
         return
 
-    tasks = await get_active_tasks(message.from_user.id)
+    tasks = await Tasksx.get_active(message.from_user.id)
     if not tasks:
         await message.answer("Список задач пуст.")
         return
 
-    try:
-        idx = int(command.args)
-    except ValueError:
+    if not is_number(command.args):
         await message.answer("Номер задачи должен быть числом.")
         return
+
+    idx = int(float(command.args))
 
     if idx < 1 or idx > len(tasks):
         await message.answer(f"Нет задачи с номером {idx}. Всего задач: {len(tasks)}.")
         return
 
     task_id = tasks[idx - 1][0]
-    await complete_task(task_id, message.from_user.id)
+    await Tasksx.complete(task_id, message.from_user.id)
     await message.answer(f"Задача \"{tasks[idx - 1][1]}\" выполнена! 🎉")
 
 
 @router.message(F.text == "📋 Мои задачи")
-async def show_tasks(message: Message) -> None:
-    tasks = await get_active_tasks(message.from_user.id)
+async def show_tasks(message: Message):
+    tasks = await Tasksx.get_active(message.from_user.id)
     if not tasks:
         await message.answer("У тебя пока нет задач. Самое время добавить! 🎉")
         return
@@ -53,9 +55,9 @@ async def show_tasks(message: Message) -> None:
 
 
 @router.callback_query(F.data.startswith("page:"))
-async def paginate_tasks(callback: CallbackQuery) -> None:
+async def paginate_tasks(callback: CallbackQuery):
     page = int(callback.data.split(":")[1])
-    tasks = await get_active_tasks(callback.from_user.id)
+    tasks = await Tasksx.get_active(callback.from_user.id)
     if not tasks:
         await callback.message.edit_text("Все задачи выполнены! 🎉")
         return
@@ -64,12 +66,12 @@ async def paginate_tasks(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == "noop")
-async def noop_callback(callback: CallbackQuery) -> None:
+async def noop_callback(callback: CallbackQuery):
     await callback.answer()
 
 
 @router.message(F.text == "➕ Новая задача")
-async def new_task_prompt(message: Message, state: FSMContext) -> None:
+async def new_task_prompt(message: Message, state: FSMContext):
     await state.set_state(AddTaskStates.waiting_for_text)
     await message.answer(
         "Напиши текст задачи, и я её сохраню.\n"
@@ -78,30 +80,30 @@ async def new_task_prompt(message: Message, state: FSMContext) -> None:
 
 
 @router.message(AddTaskStates.waiting_for_text)
-async def save_task(message: Message, state: FSMContext) -> None:
+async def save_task(message: Message, state: FSMContext):
     text = message.text
     if not text or text.startswith("/"):
         await state.clear()
         await message.answer("Добавление задачи отменено.", reply_markup=main_menu_kb())
         return
-    await add_task(message.from_user.id, text)
+    await Tasksx.add(message.from_user.id, text)
     await state.clear()
     await message.answer("✅ Задача добавлена!", reply_markup=main_menu_kb())
 
 
 @router.callback_query(F.data.startswith("done:"))
-async def mark_done(callback: CallbackQuery) -> None:
+async def mark_done(callback: CallbackQuery):
     parts = callback.data.split(":")
     task_id = int(parts[1])
     page = int(parts[2]) if len(parts) > 2 else 0
 
-    success = await complete_task(task_id, callback.from_user.id)
+    success = await Tasksx.complete(task_id, callback.from_user.id)
     if success:
         await callback.answer("Задача выполнена! 🎉")
     else:
         await callback.answer("Задача не найдена или уже выполнена.")
 
-    tasks = await get_active_tasks(callback.from_user.id)
+    tasks = await Tasksx.get_active(callback.from_user.id)
     if tasks:
         await callback.message.edit_text(
             "Твои текущие задачи (нажми ✅, чтобы завершить):",

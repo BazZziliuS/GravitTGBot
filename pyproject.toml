@@ -7,4 +7,9 @@ dependencies = [
     "aiogram>=3.26.0",
     "aiosqlite>=0.22.1",
     "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0",
+    "cachetools>=5.0",
 ]
+
+[tool.ruff.lint]
+ignore = ["E712"]

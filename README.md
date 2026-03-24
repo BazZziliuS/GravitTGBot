@@ -9,13 +9,6 @@ Telegram-бот для управления списком задач с инт�
 - **Погода** - текущая погода по названию города (wttr.in)
 - **FSM-диалоги** - ввод задач и города через машину состояний aiogram
 
-## Стек
-
-- Python 3.13
-- [aiogram 3](https://docs.aiogram.dev/) - асинхронный фреймворк для Telegram Bot API
-- aiosqlite - асинхронная работа с SQLite
-- [uv](https://docs.astral.sh/uv/) - менеджер пакетов
-
 ## Запуск
 
 ### 1. Клонируйте репозиторий
@@ -49,19 +42,4 @@ BOT_TOKEN=123456:ABC-DEF...
 uv run python main.py
 ```
 
-## Архитектура
-
-```
-main.py                  # точка входа
-bot/
-  config.py              # загрузка конфигурации из .env
-  db/models.py           # слой работы с SQLite
-  handlers/
-    start.py             # команда /start
-    tasks.py             # CRUD задач + FSM
-    weather.py           # погода + FSM
-    common.py            # /cancel и fallback
-  services/weather.py    # клиент wttr.in API
-  keyboards/main_menu.py # клавиатуры
-  states/weather.py      # состояния FSM для погоды
-```
+_Лучший темплейт: https://github.com/djimboy/djimbo_template_aio3_
